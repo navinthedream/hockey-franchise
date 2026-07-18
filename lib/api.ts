@@ -1,4 +1,4 @@
-import { League, GameResult } from './types';
+import { League, GameResult, Lines } from './types';
 
 export async function fetchFranchise(): Promise<League | null> {
   const res = await fetch('/api/franchise');
@@ -27,4 +27,12 @@ export async function simAdvance(mode: 'day' | 'toNextUserGame' | 'season'): Pro
 
 export async function resetFranchise(): Promise<void> {
   await fetch('/api/franchise', { method: 'DELETE' });
+}
+
+export async function updateLines(teamId: string, lines: Lines): Promise<void> {
+  await fetch('/api/franchise/lines', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ teamId, lines }),
+  });
 }

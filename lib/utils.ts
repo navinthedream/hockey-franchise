@@ -1,4 +1,4 @@
-import { League, Player, SeasonStats, Team } from './types';
+import { League, Player, SeasonStats, SkaterPlayer, Team } from './types';
 
 export function teamById(league: League, id: string): Team | undefined {
   return league.teams.find(t => t.id === id);
@@ -106,4 +106,37 @@ export function formatSavePct(saves: number, shotsAgainst: number): string {
 export function formatGAA(goalsAgainst: number, gamesPlayed: number): string {
   if (gamesPlayed === 0) return '—';
   return (goalsAgainst / gamesPlayed).toFixed(2);
+}
+
+function _avg(ns: number[]) { return ns.reduce((a, b) => a + b, 0) / (ns.length || 1); }
+
+/** Forward line offensive composite — mirrors simEngine lineAttack exactly */
+export function lineAttackRating(line: SkaterPlayer[]): number {
+  if (!line.length) return 50;
+  return _avg(line.map(p =>
+    p.ratings.passing * 0.24 + p.ratings.offAwareness * 0.22 + p.ratings.puckControl * 0.18 +
+    p.ratings.deking * 0.14 + ((p.ratings.wristShotAccuracy + p.ratings.wristShotPower) / 2) * 0.22,
+  ));
+}
+/** Forward line defensive composite — mirrors simEngine lineDefend exactly */
+export function lineDefendRating(line: SkaterPlayer[]): number {
+  if (!line.length) return 50;
+  return _avg(line.map(p =>
+    p.ratings.defAwareness * 0.4 + p.ratings.stickChecking * 0.25 + p.ratings.strength * 0.15 + p.ratings.balance * 0.2,
+  ));
+}
+/** D pair offensive composite — mirrors simEngine pairAttack exactly */
+export function pairAttackRating(pair: SkaterPlayer[]): number {
+  if (!pair.length) return 45;
+  return _avg(pair.map(p =>
+    p.ratings.passing * 0.3 + p.ratings.offAwareness * 0.25 +
+    ((p.ratings.slapShotAccuracy + p.ratings.slapShotPower) / 2) * 0.25 + p.ratings.poise * 0.2,
+  ));
+}
+/** D pair defensive composite — mirrors simEngine pairDefend exactly */
+export function pairDefendRating(pair: SkaterPlayer[]): number {
+  if (!pair.length) return 55;
+  return _avg(pair.map(p =>
+    p.ratings.defAwareness * 0.35 + p.ratings.shotBlocking * 0.25 + p.ratings.stickChecking * 0.2 + p.ratings.strength * 0.2,
+  ));
 }

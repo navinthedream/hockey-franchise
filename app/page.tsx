@@ -9,9 +9,10 @@ import { RosterTable } from '@/components/RosterTable';
 import { GameViewer } from '@/components/GameViewer';
 import { Scoreboard } from '@/components/Scoreboard';
 import { LeagueLeaders } from '@/components/LeagueLeaders';
+import { LinesEditor } from '@/components/LinesEditor';
 import { formatDate, nextGameForTeam, seasonGamesPlayed, seasonGamesTotal, teamById, teamLabel } from '@/lib/utils';
 
-type Tab = 'dashboard' | 'standings' | 'roster' | 'lastGame' | 'leaders';
+type Tab = 'dashboard' | 'standings' | 'roster' | 'lastGame' | 'leaders' | 'lines';
 
 export default function Home() {
   const [league, setLeague] = useState<League | null | undefined>(undefined); // undefined = loading
@@ -80,7 +81,7 @@ export default function Home() {
           </button>
         </div>
         <nav className="max-w-5xl mx-auto px-6 flex gap-1 pb-2">
-          {(['dashboard', 'standings', 'roster', 'lastGame', 'leaders'] as Tab[]).map(t => (
+          {(['dashboard', 'standings', 'roster', 'lastGame', 'leaders', 'lines'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -92,7 +93,8 @@ export default function Home() {
                 : t === 'standings' ? 'Standings'
                 : t === 'roster' ? 'My Roster'
                 : t === 'lastGame' ? 'Last Game'
-                : 'Leaders'}
+                : t === 'leaders' ? 'Leaders'
+                : 'Lines'}
             </button>
           ))}
         </nav>
@@ -167,6 +169,13 @@ export default function Home() {
             : <div className="text-steel-400">No game simmed yet — head to Dashboard and sim a day.</div>
         )}
         {tab === 'leaders' && <LeagueLeaders league={league} />}
+        {tab === 'lines' && (
+          <LinesEditor
+            key={league.currentDate + userTeam.id}
+            league={league}
+            userTeamId={userTeam.id}
+          />
+        )}
       </main>
     </div>
   );
