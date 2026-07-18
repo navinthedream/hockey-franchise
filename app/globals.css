@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+:root {
+  /* Rink-night palette */
+  --ice-950: #0a1a28;
+  --ice-900: #122438;
+  --ice-850: #16293e;
+  --ice-800: #1c3448;
+  --ice-700: #274259;
+  --ice-100: #e7eef3;
+  --steel-400: #6e8ca3;
+  --steel-300: #8fabc0;
+  --goal-red: #e8384f;
+  --goal-red-dim: #7a2530;
+  --pp-gold: #f2b33d;
+  --win-teal: #3fa796;
+
+  --background: var(--ice-950);
+  --foreground: var(--ice-100);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ice-950: var(--ice-950);
+  --color-ice-900: var(--ice-900);
+  --color-ice-850: var(--ice-850);
+  --color-ice-800: var(--ice-800);
+  --color-ice-700: var(--ice-700);
+  --color-ice-100: var(--ice-100);
+  --color-steel-400: var(--steel-400);
+  --color-steel-300: var(--steel-300);
+  --color-goal-red: var(--goal-red);
+  --color-goal-red-dim: var(--goal-red-dim);
+  --color-pp-gold: var(--pp-gold);
+  --color-win-teal: var(--win-teal);
+  --font-display: var(--font-oswald);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  background-image:
+    radial-gradient(ellipse 120% 60% at 50% -10%, rgba(39, 66, 89, 0.35), transparent),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+}
+
+.font-display {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+}
+.font-mono-stat {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* faint center-ice rink watermark, used on hero/panel backgrounds */
+.rink-watermark {
+  position: relative;
+  overflow: hidden;
+}
+.rink-watermark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 85% -10%, transparent 68px, rgba(232,56,79,0.14) 69px, rgba(232,56,79,0.14) 70px, transparent 71px),
+    radial-gradient(circle at 85% -10%, transparent 118px, rgba(110,140,163,0.10) 119px, rgba(110,140,163,0.10) 120px, transparent 121px);
+}
+
+::selection {
+  background: var(--goal-red);
+  color: var(--ice-100);
+}
+
+* {
+  scrollbar-color: var(--ice-700) var(--ice-900);
+}
