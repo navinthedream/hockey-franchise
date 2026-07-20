@@ -3,12 +3,20 @@
  *
  * Run with:  npx tsx scripts/verify-plusminus.ts
  */
+import fs from 'fs';
+import path from 'path';
 import { generateLeague } from '../lib/generator';
+import type { RealLeagueJson } from '../lib/generator';
 import { generateSchedule } from '../lib/schedule';
 import { simulateRestOfSeason } from '../lib/franchiseEngine';
 import { isGoalie } from '../lib/types';
 
-const league = generateLeague(2026);
+function loadData(): RealLeagueJson {
+  const p = path.join(process.cwd(), 'data', 'real-league-2025-26.json');
+  return JSON.parse(fs.readFileSync(p, 'utf8')) as RealLeagueJson;
+}
+
+const league = generateLeague(2026, loadData());
 league.schedule = generateSchedule(league);
 
 console.log(`League: ${league.teams.length} teams, ${league.schedule.length} scheduled games`);

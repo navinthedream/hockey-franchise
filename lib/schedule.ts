@@ -2,79 +2,102 @@ import { League, ScheduledGame } from './types';
 import { uid } from './generator';
 
 /**
- * Generates a season schedule. Each team plays every other team home & away
- * (2 games each = 30 games for 16 teams), then adds extra divisional games
- * to reach a reasonable per-team game count (~40-something), spread across
- * ~5.5 months (Oct 1 - mid March) so playoffs can follow.
+ * Generates an 82-game NHL-style schedule for 32 teams.
+ *
+ * Game counts per team (totals to 84 — within 2 of the real 82):
+ *   vs same division (7 teams)               : 4 games each = 28
+ *   vs other division, same conference (8 teams): 3 games each = 24
+ *   vs opposite conference (16 teams)         : 2 games each = 32
+ *   ──────────────────────────────────────────────────────────
+ *   Total per team                            : 84
+ *
+ * Season window: Oct 1 → Apr 17 (~198 days); avg ~6.8 games/day league-wide.
  */
 export function generateSchedule(league: League): ScheduledGame[] {
-  const teamIds = league.teams.map(t => t.id);
+  const teams = league.teams;
+  const teamMap = new Map(teams.map(t => [t.id, t]));
+
+  // ── 1. Build (home, away) pairings ────────────────────────────────────────
   const pairings: { home: string; away: string }[] = [];
 
-  // Round 1: everyone home vs everyone away (full round robin both ways)
-  for (let i = 0; i < teamIds.length; i++) {
-    for (let j = 0; j < teamIds.length; j++) {
-      if (i === j) continue;
-      pairings.push({ home: teamIds[i], away: teamIds[j] });
+  for (let i = 0; i < teams.length; i++) {
+    for (let j = i + 1; j < teams.length; j++) {
+      const ti = teams[i], tj = teams[j];
+      const sameDivision   = ti.conference === tj.conference && ti.division === tj.division;
+      const sameConference = ti.conference === tj.conference;
+
+      if (sameDivision) {
+        // 4 games: 2 home each
+        pairings.push({ home: ti.id, away: tj.id });
+        pairings.push({ home: ti.id, away: tj.id });
+        pairings.push({ home: tj.id, away: ti.id });
+        pairings.push({ home: tj.id, away: ti.id });
+      } else if (sameConference) {
+        // 3 games: team with lower index in the teams array gets 2 home
+        pairings.push({ home: ti.id, away: tj.id });
+        pairings.push({ home: ti.id, away: tj.id });
+        pairings.push({ home: tj.id, away: ti.id });
+      } else {
+        // 2 games: 1 home each
+        pairings.push({ home: ti.id, away: tj.id });
+        pairings.push({ home: tj.id, away: ti.id });
+      }
     }
   }
 
-  // Add extra divisional rivalry games (2 more each way) for realism
-  const byDivision: Record<string, string[]> = {};
-  league.teams.forEach(t => {
-    const key = `${t.conference}-${t.division}`;
-    byDivision[key] = byDivision[key] || [];
-    byDivision[key].push(t.id);
-  });
-  Object.values(byDivision).forEach(ids => {
-    for (let i = 0; i < ids.length; i++) {
-      for (let j = 0; j < ids.length; j++) {
-        if (i === j) continue;
-        pairings.push({ home: ids[i], away: ids[j] });
-      }
-    }
-  });
-
-  // Shuffle pairings so it's not all division games clustered at the end
+  // ── 2. Shuffle ────────────────────────────────────────────────────────────
   for (let i = pairings.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pairings[i], pairings[j]] = [pairings[j], pairings[i]];
   }
 
-  // Distribute across dates: ~3-4 games per "day" of league action,
-  // but simplify to one game per team per date at most.
-  const startDate = new Date(league.currentDate);
+  // ── 3. Spread across calendar dates ──────────────────────────────────────
+  // One game per team per calendar day; advance day when no more games fit.
+  // Real NHL: ~7–13 games per day across a ~180-day window (Oct → early Apr).
+  // We target ≤12 games per active day and skip ~30 % of days (travel days / off days),
+  // which naturally stretches the schedule to ~170–185 calendar days.
+  const MAX_GAMES_PER_DAY = 12;
+
+  const startDate = new Date(league.currentDate + 'T12:00:00Z');
   const schedule: ScheduledGame[] = [];
-  const teamLastDate: Record<string, number> = {};
-  let dayCursor = 0;
   const remaining = [...pairings];
+  let dayCursor = 0;
 
   while (remaining.length > 0) {
+    // ~30 % chance of a "travel / off" day (no games); always false for first day
+    if (dayCursor > 0 && Math.random() < 0.30) {
+      dayCursor++;
+      continue;
+    }
+
     const dateObj = new Date(startDate);
-    dateObj.setDate(dateObj.getDate() + dayCursor);
+    dateObj.setUTCDate(dateObj.getUTCDate() + dayCursor);
     const dateStr = dateObj.toISOString().slice(0, 10);
+
     const usedToday = new Set<string>();
+    let scheduledToday = 0;
 
     for (let idx = 0; idx < remaining.length; idx++) {
+      if (scheduledToday >= MAX_GAMES_PER_DAY) break;
       const pair = remaining[idx];
       if (usedToday.has(pair.home) || usedToday.has(pair.away)) continue;
-      // avoid back-to-back-to-back: require at least 1 day rest typically (soft rule)
+
       schedule.push({
-        id: uid('game'),
-        date: dateStr,
+        id:         uid('game'),
+        date:       dateStr,
         homeTeamId: pair.home,
         awayTeamId: pair.away,
-        played: false,
+        played:     false,
       });
       usedToday.add(pair.home);
       usedToday.add(pair.away);
-      teamLastDate[pair.home] = dayCursor;
-      teamLastDate[pair.away] = dayCursor;
       remaining.splice(idx, 1);
       idx--;
+      scheduledToday++;
     }
+
     dayCursor++;
-    if (dayCursor > 400) break; // safety valve
+    if (dayCursor > 600) break; // safety valve
   }
 
   schedule.sort((a, b) => a.date.localeCompare(b.date));

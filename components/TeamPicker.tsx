@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TEAM_SEEDS } from '@/lib/generator';
+import { TEAM_SEEDS } from '@/lib/teamSeeds';
 
 export function TeamPicker({ onPick, loading }: { onPick: (abbr: string) => void; loading: boolean }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -13,7 +13,7 @@ export function TeamPicker({ onPick, loading }: { onPick: (abbr: string) => void
         <div className="text-goal-red text-xs uppercase tracking-[0.25em] font-medium mb-2">New Franchise</div>
         <h1 className="font-display text-4xl sm:text-5xl uppercase tracking-tight text-ice-100">Pick your team</h1>
         <p className="text-steel-300 mt-3 max-w-xl">
-          You&apos;ll take over as GM — set lines, run the season, and build toward a Cup. Sixteen clubs, one bench is yours.
+          You&apos;ll take over as GM — set lines, run the season, and build toward a Cup. All 32 NHL clubs, one bench is yours.
         </p>
       </div>
 
