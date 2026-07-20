@@ -6,17 +6,108 @@
 import fs from 'fs';
 import path from 'path';
 import { generateLeague } from '../lib/generator';
-import type { RealLeagueJson } from '../lib/generator';
+import type { Ratings, SkaterRow, GoalieRow } from '../lib/server/ratingsData';
 import { generateSchedule } from '../lib/schedule';
 import { simulateRestOfSeason } from '../lib/franchiseEngine';
 import { isGoalie } from '../lib/types';
 
-function loadData(): RealLeagueJson {
-  const p = path.join(process.cwd(), 'data', 'real-league-2025-26.json');
-  return JSON.parse(fs.readFileSync(p, 'utf8')) as RealLeagueJson;
+// ── Inline CSV parser (scripts run in plain Node/tsx — no server-only imports) ──
+
+function parseLine(line: string): string[] {
+  const fields: string[] = [];
+  let i = 0;
+  while (i <= line.length) {
+    if (i === line.length) { fields.push(''); break; }
+    if (line[i] === '"') {
+      let val = ''; i++;
+      while (i < line.length) {
+        if (line[i] === '"' && line[i + 1] === '"') { val += '"'; i += 2; }
+        else if (line[i] === '"') { i++; break; }
+        else { val += line[i++]; }
+      }
+      fields.push(val);
+      if (line[i] === ',') i++;
+    } else {
+      const end = line.indexOf(',', i);
+      if (end === -1) { fields.push(line.slice(i)); break; }
+      fields.push(line.slice(i, end));
+      i = end + 1;
+    }
+  }
+  return fields;
 }
 
-const league = generateLeague(2026, loadData());
+function parseCSV(raw: string): Record<string, string>[] {
+  const lines = raw.split('\n');
+  if (!lines.length) return [];
+  const headers = parseLine(lines[0]);
+  const rows: Record<string, string>[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const values = parseLine(line);
+    const row: Record<string, string> = {};
+    headers.forEach((h, j) => { row[h] = values[j] ?? ''; });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function int(v: string): number { const n = parseInt(v, 10); return isNaN(n) ? 0 : n; }
+
+function loadRatings(): Ratings {
+  const base = path.join(process.cwd(), 'data', 'ratings');
+
+  const skaterRaw = parseCSV(fs.readFileSync(path.join(base, 'skaters.csv'), 'utf8'));
+  const goalieRaw = parseCSV(fs.readFileSync(path.join(base, 'goalies.csv'), 'utf8'));
+
+  const skaters = skaterRaw.map((r): SkaterRow => ({
+    playerId: r.playerId, nhlId: int(r.nhlId),
+    firstName: r.firstName, lastName: r.lastName,
+    team: r.team, position: r.position as SkaterRow['position'],
+    handedness: r.handedness === 'R' ? 'R' : 'L',
+    age: int(r.age), overall: int(r.overall), potential: int(r.potential),
+    archetype: r.archetype as SkaterRow['archetype'],
+    ratingSource: r.ratingSource as 'ea_official' | 'estimated',
+    lastVerified: r.lastVerified,
+    attrs: {
+      deking: int(r.deking), handEye: int(r.handEye), passing: int(r.passing),
+      puckControl: int(r.puckControl), discipline: int(r.discipline),
+      offAwareness: int(r.offAwareness), poise: int(r.poise),
+      slapShotAccuracy: int(r.slapShotAccuracy), slapShotPower: int(r.slapShotPower),
+      wristShotAccuracy: int(r.wristShotAccuracy), wristShotPower: int(r.wristShotPower),
+      defAwareness: int(r.defAwareness), faceoffs: int(r.faceoffs),
+      shotBlocking: int(r.shotBlocking), stickChecking: int(r.stickChecking),
+      acceleration: int(r.acceleration), agility: int(r.agility), balance: int(r.balance),
+      endurance: int(r.endurance), speed: int(r.speed),
+      aggressiveness: int(r.aggressiveness), bodyChecking: int(r.bodyChecking),
+      durability: int(r.durability), fightingSkill: int(r.fightingSkill), strength: int(r.strength),
+    },
+  }));
+
+  const goalies = goalieRaw.map((r): GoalieRow => ({
+    playerId: r.playerId, nhlId: int(r.nhlId),
+    firstName: r.firstName, lastName: r.lastName,
+    team: r.team, position: 'G',
+    handedness: r.handedness === 'R' ? 'R' : 'L',
+    age: int(r.age), overall: int(r.overall), potential: int(r.potential),
+    archetype: r.archetype as GoalieRow['archetype'],
+    ratingSource: r.ratingSource as 'ea_official' | 'estimated',
+    lastVerified: r.lastVerified,
+    attrs: {
+      positioning: int(r.positioning), angles: int(r.angles), fiveHole: int(r.fiveHole),
+      gloveSave: int(r.gloveSave), blockerSave: int(r.blockerSave), quickness: int(r.quickness),
+      reboundControl: int(r.reboundControl), puckHandling: int(r.puckHandling),
+      passing: int(r.passing), poise: int(r.poise), consistency: int(r.consistency),
+      aggressiveness: int(r.aggressiveness), flexibility: int(r.flexibility),
+      endurance: int(r.endurance), durability: int(r.durability),
+    },
+  }));
+
+  return { skaters, goalies };
+}
+
+const league = generateLeague(2026, loadRatings());
 league.schedule = generateSchedule(league);
 
 console.log(`League: ${league.teams.length} teams, ${league.schedule.length} scheduled games`);

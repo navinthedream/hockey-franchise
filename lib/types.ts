@@ -71,27 +71,6 @@ export interface GoalieAttributes {
   durability: number;
 }
 
-/** Real-world stats from last completed season (MoneyPuck 2024), stored for comparison. */
-export interface RealStats {
-  // Skater
-  goals?: number;
-  primaryAssists?: number;
-  secondaryAssists?: number;
-  points?: number;
-  gamesPlayed?: number;
-  icetimeSec?: number;
-  xGF_per60?: number;
-  goals_per60?: number;
-  a1_per60?: number;
-  corsi_pct?: number;
-  hits_per60?: number;
-  blocks_per60?: number;
-  // Goalie
-  gaa?: number;
-  sv_pct?: number;
-  gsaa?: number;
-}
-
 interface PlayerBase {
   id: string;
   firstName: string;
@@ -106,7 +85,6 @@ interface PlayerBase {
     yearsRemaining: number;
   };
   stats: SeasonStats;
-  realStats?: RealStats;  // real-world stats from MoneyPuck, if available
   morale: number; // 0-100, affects performance slightly
 }
 

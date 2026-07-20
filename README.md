@@ -11,6 +11,21 @@ npm run dev
 
 Open http://localhost:3000. Pick a team, then sim games. Your save lives in `data/save.json` (gitignored).
 
+## Ratings data
+
+Player ratings live in two CSV files editable in Excel, Numbers, or Google Sheets:
+
+- `data/ratings/skaters.csv` — 714 skaters with 25 attributes each
+- `data/ratings/goalies.csv` — 81 goalies with 15 attributes each
+
+Each row has a `ratingSource` field:
+- `"ea_official"` — attributes and overall taken directly from the published EA NHL 26 ratings page
+- `"estimated"` — overall and attributes derived from MoneyPuck 2024-25 per-60 stats run through a percentile ranking model (same methodology that was previously inline in `generator.ts`)
+
+**To update a player's ratings**: open the CSV in any spreadsheet app, edit the cells, save, and restart the dev server. Changes take effect on the next new-franchise creation.
+
+**To re-seed from EA + MoneyPuck**: run `python3 scripts/fetch-ea-ratings.py` — this regenerates both CSVs by fetching the live EA ratings page and recalculating the estimated rows from `data/real-league-2025-26.json`.
+
 ## How the sim actually works
 
 Each tick (~15-35 in-game seconds) rolls one of: a penalty, a hit, or a possession sequence.
@@ -42,13 +57,17 @@ Tuned and verified against real NHL rates: ~6.1 goals/game, ~58-60 shots/game, ~
 ## Project structure
 
 ```
-lib/types.ts             — core interfaces: 25-attr SkaterAttributes, 15-attr GoalieAttributes, archetypes
-lib/generator.ts          — archetype-driven player/league generation, tier-correlated archetype selection
-lib/schedule.ts            — season schedule
-lib/simEngine.ts            — the play-by-play simulator (see "How the sim actually works" above)
-lib/franchiseEngine.ts       — day-by-day season advancement + standings
-lib/store.ts                  — JSON file save/load (server-side)
-app/api/franchise/              — REST-ish API routes the client hits
-components/                       — Scoreboard, StandingsTable, RosterTable, GameViewer, TeamPicker
-app/page.tsx                       — main client app (tabs: dashboard/standings/roster/last game)
+data/ratings/skaters.csv       — 714 skaters: overall + 25 attributes (edit to update ratings)
+data/ratings/goalies.csv        — 81 goalies: overall + 15 attributes (edit to update ratings)
+scripts/fetch-ea-ratings.py      — re-seeds both CSVs from EA NHL 26 + MoneyPuck data
+lib/types.ts                      — core interfaces: 25-attr SkaterAttributes, 15-attr GoalieAttributes, archetypes
+lib/generator.ts                   — league generation from CSV ratings; fallback random player generation
+lib/server/ratingsData.ts           — server-only CSV loader (hand-rolled parser, no deps)
+lib/schedule.ts                      — season schedule
+lib/simEngine.ts                      — the play-by-play simulator (see "How the sim actually works" above)
+lib/franchiseEngine.ts                 — day-by-day season advancement + standings
+lib/store.ts                            — JSON file save/load (server-side)
+app/api/franchise/                       — REST-ish API routes the client hits
+components/                               — Scoreboard, StandingsTable, RosterTable, GameViewer, TeamPicker
+app/page.tsx                               — main client app (tabs: dashboard/standings/roster/last game)
 ```
